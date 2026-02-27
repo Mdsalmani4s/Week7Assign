@@ -198,3 +198,64 @@ plt.tight_layout()
 plt.savefig("outputs/novel_views.png", dpi=150)
 plt.close()
 print("[SAVED] outputs/novel_views.png")
+
+
+
+
+# ── STEP 6: Evaluate with PSNR and SSIM ─────────────────────
+# Commit: "Evaluated NeRF model performance using PSNR and SSIM"
+
+def compute_metrics(gt, pred):
+    gt   = np.clip(gt,   0, 1).astype(np.float64)
+    pred = np.clip(pred, 0, 1).astype(np.float64)
+    p = psnr(gt, pred, data_range=1.0)
+    s = ssim(gt, pred, data_range=1.0, channel_axis=-1)
+    return p, s
+
+# Compare rendered views against held-out real images
+num_eval = min(6, len(processed_images))
+eval_images = processed_images[:num_eval]
+eval_angles = np.linspace(-0.9, 0.9, num_eval)
+
+psnr_vals, ssim_vals, labels = [], [], []
+for i, (gt_img, angle) in enumerate(zip(eval_images, eval_angles)):
+    pred_img = render_view(model, angle)
+    p, s = compute_metrics(gt_img, pred_img)
+    psnr_vals.append(p)
+    ssim_vals.append(s)
+    labels.append(f"View {i+1}")
+    print(f"  View {i+1}: PSNR={p:.2f} dB  SSIM={s:.4f}")
+
+# --- OUTPUT 3: PSNR & SSIM Bar Chart ---
+x = np.arange(len(labels))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+fig.suptitle("NeRF Model Evaluation — PSNR & SSIM per View", fontsize=14, fontweight="bold")
+
+bars1 = ax1.bar(x, psnr_vals, color="#16a34a", edgecolor="white", width=0.6)
+ax1.set_xticks(x); ax1.set_xticklabels(labels, fontsize=10)
+ax1.set_ylabel("PSNR (dB)", fontsize=11)
+ax1.set_title("Peak Signal-to-Noise Ratio", fontsize=12)
+ax1.bar_label(bars1, fmt="%.1f", padding=3, fontsize=9)
+ax1.grid(axis="y", linestyle="--", alpha=0.5)
+ax1.set_ylim(0, max(psnr_vals) * 1.2)
+
+bars2 = ax2.bar(x, ssim_vals, color="#7c3aed", edgecolor="white", width=0.6)
+ax2.set_xticks(x); ax2.set_xticklabels(labels, fontsize=10)
+ax2.set_ylabel("SSIM Score", fontsize=11)
+ax2.set_title("Structural Similarity Index", fontsize=12)
+ax2.bar_label(bars2, fmt="%.3f", padding=3, fontsize=9)
+ax2.grid(axis="y", linestyle="--", alpha=0.5)
+ax2.set_ylim(0, 1.1)
+
+plt.tight_layout()
+plt.savefig("outputs/psnr_ssim_evaluation.png", dpi=150)
+plt.close()
+print("[SAVED] outputs/psnr_ssim_evaluation.png")
+
+# ── DONE ────────────────────────────────────────────────────
+print("\n✅ All done! Outputs saved to ./outputs/")
+print("   • sample_images.png       — dataset preview")
+print("   • training_loss.png       — loss curve")
+print("   • novel_views.png         — synthesised novel views")
+print("   • psnr_ssim_evaluation.png — PSNR & SSIM bar charts")
+print("   • nerf_model.pth          — saved model weights")
