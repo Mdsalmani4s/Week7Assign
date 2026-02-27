@@ -167,3 +167,34 @@ plt.tight_layout()
 plt.savefig("outputs/training_loss.png", dpi=150)
 plt.close()
 print("[SAVED] outputs/training_loss.png")
+
+
+
+
+# ── STEP 5: Synthesise Novel Views ──────────────────────────
+# Commit: "Synthesized novel views from NeRF and visualized 3D point cloud"
+
+model.eval()
+H, W = TARGET_SIZE
+
+def render_view(model, angle_z):
+    """Render one novel view at a given z-offset (camera angle proxy)."""
+    ys, xs = np.meshgrid(np.linspace(-1, 1, H), np.linspace(-1, 1, W), indexing="ij")
+    xyz = np.stack([xs, ys, np.full_like(xs, angle_z)], axis=-1).reshape(-1, 3)
+    with torch.no_grad():
+        rgba = model(torch.tensor(xyz, dtype=torch.float32)).numpy()
+    return rgba[:, :3].reshape(H, W, 3)
+
+# Render 4 novel views at different angles
+novel_views = [render_view(model, z) for z in [-0.75, -0.25, 0.25, 0.75]]
+
+fig, axes = plt.subplots(1, 4, figsize=(14, 4))
+fig.suptitle("NeRF — Novel View Synthesis", fontsize=14, fontweight="bold")
+for ax, view, angle in zip(axes, novel_views, [-0.75, -0.25, 0.25, 0.75]):
+    ax.imshow(np.clip(view, 0, 1))
+    ax.set_title(f"z = {angle}", fontsize=10)
+    ax.axis("off")
+plt.tight_layout()
+plt.savefig("outputs/novel_views.png", dpi=150)
+plt.close()
+print("[SAVED] outputs/novel_views.png")
