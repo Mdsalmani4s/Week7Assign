@@ -93,3 +93,77 @@ class NeRF(nn.Module):
 
 model = NeRF()
 print(f"[INFO] NeRF model created — parameters: {sum(p.numel() for p in model.parameters()):,}")
+
+
+
+
+# ── STEP 4: Train NeRF Model ────────────────────────────────
+# Commit: "Trained NeRF model on synthetic dataset"
+
+# Build training data from actual images
+# Each pixel is a training sample: (r, g, b) at a normalised 3D position
+def images_to_training_data(images):
+    """Convert list of images to (3D coords, RGBA targets) tensors."""
+    coords, targets = [], []
+    h, w = images[0].shape[:2]
+    for idx, img in enumerate(images):
+        # Normalise view angle as z-axis offset so each view differs
+        z = (idx / max(len(images) - 1, 1)) * 2 - 1
+        ys, xs = np.meshgrid(
+            np.linspace(-1, 1, h),
+            np.linspace(-1, 1, w),
+            indexing="ij"
+        )
+        xyz = np.stack([xs, ys, np.full_like(xs, z)], axis=-1).reshape(-1, 3)
+        rgba = np.concatenate([img, np.ones((h * w, 1))], axis=-1) if img.ndim == 2 \
+               else np.concatenate([img.reshape(-1, 3), np.ones((h * w, 1))], axis=-1)
+        coords.append(xyz)
+        targets.append(rgba)
+    return (torch.tensor(np.concatenate(coords), dtype=torch.float32),
+            torch.tensor(np.concatenate(targets), dtype=torch.float32))
+
+train_x, train_y = images_to_training_data(processed_images[:20])
+print(f"[INFO] Training samples: {len(train_x):,}")
+
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+EPOCHS = 60
+BATCH  = 4096
+loss_history = []
+
+for epoch in range(1, EPOCHS + 1):
+    # Mini-batch training
+    perm = torch.randperm(len(train_x))
+    epoch_loss = 0.0
+    steps = 0
+    for start in range(0, len(train_x), BATCH):
+        idx = perm[start:start + BATCH]
+        xb, yb = train_x[idx], train_y[idx]
+        optimizer.zero_grad()
+        pred = model(xb)
+        loss = criterion(pred, yb)
+        loss.backward()
+        optimizer.step()
+        epoch_loss += loss.item()
+        steps += 1
+    avg_loss = epoch_loss / steps
+    loss_history.append(avg_loss)
+    if epoch % 10 == 0:
+        print(f"  Epoch {epoch:3d}/{EPOCHS}  Loss: {avg_loss:.4f}")
+
+torch.save(model.state_dict(), "outputs/nerf_model.pth")
+print("[SAVED] outputs/nerf_model.pth")
+
+# --- OUTPUT 2: Training Loss Curve ---
+fig, ax = plt.subplots(figsize=(9, 5))
+ax.plot(range(1, EPOCHS + 1), loss_history, color="#2563eb", linewidth=2, label="Train Loss")
+ax.fill_between(range(1, EPOCHS + 1), loss_history, alpha=0.15, color="#2563eb")
+ax.set_xlabel("Epoch", fontsize=12)
+ax.set_ylabel("MSE Loss", fontsize=12)
+ax.set_title("NeRF Training Loss Curve", fontsize=14, fontweight="bold")
+ax.legend(fontsize=11)
+ax.grid(True, linestyle="--", alpha=0.5)
+plt.tight_layout()
+plt.savefig("outputs/training_loss.png", dpi=150)
+plt.close()
+print("[SAVED] outputs/training_loss.png")
