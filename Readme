@@ -1,0 +1,27 @@
+# NeRF — 3D Scene Reconstruction
+
+Implements Neural Radiance Fields (NeRF) on the NeRF Synthetic Chair dataset.
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+Place chair images in `data/nerf_chair_images/` (download from [Kaggle](https://www.kaggle.com/datasets/nguyenhung1903/nerf-synthetic-dataset)).
+
+## Run
+
+```bash
+python nerf_reconstruction.py
+```
+
+## Outputs (saved to `outputs/`)
+
+| File | Description |
+|---|---|
+| `sample_images.png` | Dataset preview grid |
+| `training_loss.png` | Training loss curve |
+| `novel_views.png` | Synthesised novel views |
+| `psnr_ssim_evaluation.png` | PSNR & SSIM bar charts |
+| `nerf_model.pth` | Saved model weights |
