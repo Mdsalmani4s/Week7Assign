@@ -64,3 +64,32 @@ plt.tight_layout()
 plt.savefig("outputs/sample_images.png", dpi=150)
 plt.close()
 print("[SAVED] outputs/sample_images.png")
+
+
+
+# ── STEP 3: Implement NeRF Model ────────────────────────────
+# Commit: "Implemented NeRF model for 3D shape reconstruction"
+
+class NeRF(nn.Module):
+    """
+    Simple NeRF network:
+    Input:  3D coordinate (x, y, z)
+    Output: RGBA (red, green, blue, density)
+    """
+    def __init__(self, hidden=128):
+        super(NeRF, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(3, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, 4)   # RGB + density
+        )
+
+    def forward(self, x):
+        return torch.sigmoid(self.net(x))   # outputs in [0, 1]
+
+model = NeRF()
+print(f"[INFO] NeRF model created — parameters: {sum(p.numel() for p in model.parameters()):,}")
